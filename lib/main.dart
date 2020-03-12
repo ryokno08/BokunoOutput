@@ -25,6 +25,7 @@ class MyApp extends StatelessWidget {
         '/home': (_) => new MyHomePage(),
         '/new': (_) => new NewBook(),
         '/read': (_) => new ReadBook(),
+        '/information': (_) => new Information(),
       },
       theme: new ThemeData(
         primarySwatch: Colors.red,
@@ -155,12 +156,13 @@ class NewBook extends StatefulWidget {
 
 class _NewBookPageState extends State<NewBook>{
 
-  StreamController<dynamic> _controller = StreamController<dynamic>.broadcast();
+  bool didSaved = false;
   var _nameController = TextEditingController();
   var _valueController = TextEditingController();
 
   List<Map<String, dynamic>> bookData = new List<Map<String, dynamic>>();
   List<String> bookId = new List<String>();
+
 
   Color wasWritten(){
     if(_nameController.text.isEmpty || _valueController.text.isEmpty){
@@ -169,6 +171,7 @@ class _NewBookPageState extends State<NewBook>{
       return Colors.orange;
     }
   }
+
 
   void push(String name,{String s}){
     if(_nameController.text.isNotEmpty && _valueController.text.isNotEmpty) {
@@ -179,6 +182,7 @@ class _NewBookPageState extends State<NewBook>{
   void pop(){
     Navigator.pop(context);
   }
+
 
   setString(String key, String value) async {
     final SharedPreferences data = await SharedPreferences.getInstance();
@@ -206,9 +210,13 @@ class _NewBookPageState extends State<NewBook>{
     data.remove(key);
   }
 
-  void save() async{
 
-     bookId = await getStringList("id") ?? new List<String>( );
+  Future save() async {
+
+    print("n"+bookId.length.toString());
+    print( bookId );
+    bookId = await getStringList("id") ?? new List<String>( );
+    print("n"+bookId.length.toString());
 
     for(int i=0; i<bookId.length; i++) {
       String jsonData = await getString(bookId[i]) ?? "{\"name\": \"\",\"content\": \"\"}";
@@ -217,10 +225,12 @@ class _NewBookPageState extends State<NewBook>{
 
     String newId = randomId( );
     bookId.add( newId );
+    print("n"+bookId.length.toString());
 
 
     Book newBookData = new Book( _nameController.text, _valueController.text );
     bookData.add( newBookData.toJson( ) );
+    await setStringList( "id", bookId );
     await setString( newId, json.encode( newBookData ) );
 
   }
@@ -338,9 +348,10 @@ class _NewBookPageState extends State<NewBook>{
                             child:
                               Text("ADD", style: TextStyle(fontSize: 18.0),),
                               color: wasWritten(),
-                              onPressed: () async {
-                                await save();
-                                push( '/read' );
+                              onPressed: () {
+                                save().then((value){
+                                  push( '/read' );
+                                });
                               }
 
                           ),
@@ -378,6 +389,7 @@ class _ReadBookPageState extends State<ReadBook>{
   List<Map<String, dynamic>> bookData = new List<Map<String, dynamic>>();
   List<String> bookId = new List<String>();
 
+
   setString(String key, String value) async {
     final SharedPreferences data = await SharedPreferences.getInstance();
     data.setString(key, value);
@@ -396,13 +408,18 @@ class _ReadBookPageState extends State<ReadBook>{
     return data.getStringList(key);
   }
 
+
   void pop(){
     Navigator.pop(context);
   }
 
-  void load() async{
+  void push(String name){
+    Navigator.pushNamed(context, name);
+  }
+
+
+  Future load() async{
     bookId = await getStringList("id") ?? new List<String>();
-    print("r"+bookId.length.toString());
 
     for(int i=0; i<bookId.length; i++) {
       String jsonData = await getString(bookId[i]) ?? "{\"name\": \"\",\"content\": \"\"}";
@@ -423,38 +440,79 @@ class _ReadBookPageState extends State<ReadBook>{
 
 
     return Scaffold(
-      appBar: AppBar(title: Text("List Test"),),
+      appBar: AppBar(title: Text("Book List"),),
       body: StreamBuilder(
         stream: _controller.stream,
-        builder: (context, snapshot) {
-          print(snapshot.data);
-          if (snapshot.data == null) {
+          //streamが更新されるたびに呼ばれる
+          builder: (BuildContext context,
+              AsyncSnapshot snapshot) {
+
+          if (!snapshot.hasData) {
             return Center(
               child: Text( "Loading.." ),
             );
 
           } else {
-            if(bookId.isEmpty) {
-              return Center(child: Text("No Data."));
-            }else{
-              return new ListView.builder(
-                shrinkWrap: true,
-                itemBuilder: (BuildContext context, int index) {
-                  return Center(
-                    child: Column(
-                      children: <Widget>[
-                        Text( bookData[index]["name"] ),
-                        Text( bookData[index]["content"] ),
-                      ],
-                    ),
-                  );
-                },
-                itemCount: bookId.length,
-              );
-            }
+              if(bookId.isEmpty) {
+                return Center(child: Text("No Data."));
+              }else {
+                return new ListView.builder(
+                  shrinkWrap: true,
+                  itemBuilder: (BuildContext context, int index) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.black38),
+                        ),
+                      ),
+                      child: ListTile(
+                        title: Text( bookData[index]["name"] ),
+                        subtitle: Text( bookData[index]["content"]),
+                        onTap: () {
+                          push( '/information' );
+                        },
+                      ),
+                    );
+                  },
+                  itemCount: bookId.length,
+                );
+              }
           }
         }
       ),
+    );
+  }
+}
+
+
+
+
+
+class Information extends StatefulWidget{
+  @override
+
+  _InformationPageState createState() => new _InformationPageState();
+}
+
+
+
+
+
+class _InformationPageState extends State<Information> {
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+        appBar: new AppBar(
+          title: const Text(""),
+        ),
+        body: Column(
+          children: <Widget>[
+            Text("ad"),
+          ]
+        ),
     );
   }
 }
